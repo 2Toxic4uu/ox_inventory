@@ -3,7 +3,7 @@ if not lib then return end
 local Items = require 'modules.items.shared' --[[@as table<string, OxClientItem>]]
 
 local function sendDisplayMetadata(data)
-    SendNUIMessage({
+	SendNUIMessage({
 		action = 'displayMetadata',
 		data = data
 	})
@@ -16,9 +16,9 @@ local function displayMetadata(metadata, value)
 	local data = {}
 
 	if type(metadata) == 'string' then
-        if not value then return end
+		if not value then return end
 
-        data = { { metadata = metadata, value = value } }
+		data = { { metadata = metadata, value = value } }
 	elseif table.type(metadata) == 'array' then
 		for i = 1, #metadata do
 			for k, v in pairs(metadata[i]) do
@@ -37,15 +37,15 @@ local function displayMetadata(metadata, value)
 		end
 	end
 
-    if client.uiLoaded then
-        return sendDisplayMetadata(data)
-    end
+	if client.uiLoaded then
+		return sendDisplayMetadata(data)
+	end
 
-    CreateThread(function()
-        repeat Wait(100) until client.uiLoaded
+	CreateThread(function()
+		repeat Wait(100) until client.uiLoaded
 
-        sendDisplayMetadata(data)
-    end)
+		sendDisplayMetadata(data)
+	end)
 end
 
 exports('displayMetadata', displayMetadata)
@@ -54,17 +54,17 @@ exports('displayMetadata', displayMetadata)
 ---@param name string?
 ---@return table?
 local function getItem(_, name)
-    if not name then return Items end
+	if not name then return Items end
 
 	if type(name) ~= 'string' then return end
 
-    name = name:lower()
+	name = name:lower()
 
-    if name:sub(0, 7) == 'weapon_' then
-        name = name:upper()
-    end
+	if name:sub(0, 7) == 'weapon_' then
+		name = name:upper()
+	end
 
-    return Items[name]
+	return Items[name]
 end
 
 setmetatable(Items --[[@as table]], {
@@ -185,6 +185,84 @@ Item('clothing', function(data, slot)
 		end
 	end)
 end)
+
+Item('powerbank', function(data, slot)
+	ox_inventory:useItem(data, function(data)
+		if data then
+			if not exports["lb-phone"]:IsCharging() or exports["lb-phone"]:IsPhoneDead() then
+				exports["lb-phone"]:ToggleCharging(true)
+				BatteryLoop()
+				lib.notify({
+					title = 'PHONE CHARGER',
+					description = 'Charging phone',
+					position = 'top',
+					style = {
+						backgroundColor = '#141517',
+						color = '#909296'
+					},
+					icon = 'fa-solid fa-mobile-screen',
+					iconColor = '#4ce074'
+				})
+			elseif exports["lb-phone"]:IsCharging() then
+				lib.notify({
+					title = 'PHONE CHARGER',
+					description = 'Phone Already Charging',
+					position = 'top',
+					style = {
+						backgroundColor = '#141517',
+						color = '#909296'
+					},
+					icon = 'fa-solid fa-mobile-screen',
+					iconColor = 'red'
+				})
+			elseif exports["lb-phone"]:GetBattery() >= 90 then
+				lib.notify({
+					title = 'PHONE CHARGER',
+					description = 'Phone does not need charge yet.',
+					position = 'top',
+					style = {
+						backgroundColor = '#141517',
+						color = '#909296'
+					},
+					icon = 'fa-solid fa-mobile-screen',
+					iconColor = 'red'
+				})
+			end
+		end
+	end)
+end)
+
+function BatteryLoop()
+	if not looped then
+		looped = true
+		CreateThread(function()
+			while true do
+				local myPhoneBattery = exports["lb-phone"]:GetBattery()
+				Wait(10)
+				if myPhoneBattery <= 99 then
+					Wait(1000 * 10)
+					myPhoneBattery += 1
+					exports["lb-phone"]:SetBattery(myPhoneBattery)
+				elseif myPhoneBattery >= 99 then
+					exports["lb-phone"]:ToggleCharging(false)
+					lib.notify({
+						title = 'PHONE CHARGER',
+						description = 'Charged',
+						position = 'top',
+						style = {
+							backgroundColor = '#141517',
+							color = '#909296'
+						},
+						icon = 'fa-solid fa-mobile-screen',
+						iconColor = '#4ce074'
+					})
+					looped = false
+					break
+				end
+			end
+		end)
+	end
+end
 
 -----------------------------------------------------------------------------------------------
 
